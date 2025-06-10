@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">IP Blocklist Management</h2>
+    
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <span>Blocked IP Addresses</span>
+                <button class="btn btn-sm btn-light" id="refresh-blocklist">
+                    <i class="bi bi-arrow-repeat"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>IP Address</th>
+                            <th>Block Expiration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ip, expire in blocked_ips.items() %}
+                        <tr>
+                            <td>{{ ip }}</td>
+                            <td>{{ expire }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-success unblock-ip" data-ip="{{ ip }}">
+                                    <i class="bi bi-unlock"></i> Unblock
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">No blocked IP addresses</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Обновление списка блокировок
+function refreshBlocklist() {
+    fetch('/api/ip_blocklist')
+        .then(r => r.json())
+        .then(blocked_ips => {
+            const tbody = document.querySelector('table tbody');
+            tbody.innerHTML = '';
+            
+            if (Object.keys(blocked_ips).length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center">No blocked IP addresses</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            for (const [ip, expire] of Object.entries(blocked_ips)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${ip}</td>
+                    <td>${expire}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success unblock-ip" data-ip="${ip}">
+                            <i class="bi bi-unlock"></i> Unblock
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+            
+            // Добавить обработчики событий для новых кнопок
+            document.querySelectorAll('.unblock-ip').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const ip = this.getAttribute('data-ip');
+                    unblockIp(ip);
+                });
+            });
+        });
+}
+
+// Разблокировка IP
+function unblockIp(ip) {
+    if (confirm(`Are you sure you want to unblock ${ip}?`)) {
+        fetch(`/api/ip_blocklist/${ip}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                refreshBlocklist();
+            }
+        });
+    }
+}
+
+// Обновление при нажатии кнопки
+document.getElementById('refresh-blocklist').addEventListener('click', refreshBlocklist);
+
+// Добавить обработчики событий для существующих кнопок
+document.querySelectorAll('.unblock-ip').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const ip = this.getAttribute('data-ip');
+        unblockIp(ip);
+    });
+});
+</script>
+{% endblock %}

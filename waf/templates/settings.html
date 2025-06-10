@@ -1,0 +1,106 @@
+<!-- templates/settings.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">System Settings</h2>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            Encryption Settings
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <h5>Key Rotation</h5>
+                <p>Last rotation: <strong id="last-rotation">Loading...</strong></p>
+                <p>Next rotation: <strong id="next-rotation">Loading...</strong></p>
+                <button class="btn btn-warning" id="rotate-key-btn">
+                    <i class="bi bi-arrow-repeat"></i> Rotate Key Now
+                </button>
+                <div id="rotation-result" class="mt-2 alert" style="display: none;"></div>
+            </div>
+
+            <div class="mb-3">
+                <h5>Rotation Settings</h5>
+                <form id="rotation-settings-form">
+                    <div class="form-group">
+                        <label for="rotation-days" class="form-label">Rotation Interval (days)</label>
+                        <input type="number" class="form-control" id="rotation-days"
+                               min="1" max="365" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-2">Save Settings</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Загрузка настроек шифрования
+function loadEncryptionSettings() {
+    fetch('/api/settings/encryption')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('last-rotation').textContent = data.last_rotation;
+            document.getElementById('next-rotation').textContent = data.next_rotation;
+            document.getElementById('rotation-days').value = data.key_rotation_days;
+        });
+}
+
+// Ротация ключа
+document.getElementById('rotate-key-btn').addEventListener('click', function() {
+    const resultDiv = document.getElementById('rotation-result');
+    resultDiv.style.display = 'block';
+    resultDiv.textContent = 'Rotating encryption key...';
+    resultDiv.className = 'alert alert-info';
+
+    fetch('/api/settings/rotate_key', {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.textContent = data.message;
+            resultDiv.className = 'alert alert-success';
+            loadEncryptionSettings();
+        } else {
+            resultDiv.textContent = data.message;
+            resultDiv.className = 'alert alert-warning';
+        }
+    });
+});
+
+// Сохранение настроек
+document.getElementById('rotation-settings-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const days = document.getElementById('rotation-days').value;
+
+    fetch('/api/settings/rotation_interval', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ days: days })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const resultDiv = document.getElementById('rotation-result');
+        resultDiv.style.display = 'block';
+
+        if (data.success) {
+            resultDiv.textContent = 'Settings saved successfully!';
+            resultDiv.className = 'alert alert-success';
+            loadEncryptionSettings();
+        } else {
+            resultDiv.textContent = 'Failed to save settings';
+            resultDiv.className = 'alert alert-danger';
+        }
+    });
+});
+
+// Загрузка при открытии страницы
+document.addEventListener('DOMContentLoaded', loadEncryptionSettings);
+</script>
+{% endblock %}

@@ -1,0 +1,213 @@
+<!-- templates/sqli_rules.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">SQL Injection Rules Management</h2>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">Rules Summary</div>
+        <div class="card-body" id="rules-summary">
+            <p>Loading rules summary...</p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">Update from OWASP CRS</div>
+        <div class="card-body">
+            <p>Last update: <strong><span id="crs-last-update">Never</span></strong></p>
+            <button class="btn btn-primary" id="update-crs-btn">
+                <i class="bi bi-cloud-download me-1"></i> Update CRS Rules
+            </button>
+            <div id="crs-update-result" class="mt-2 alert" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-info text-white">Custom Rules</div>
+        <div class="card-body">
+            <form id="add-rule-form" class="mb-4">
+                <div class="form-group">
+                    <label for="new-rule" class="form-label">New Rule (regex pattern)</label>
+                    <input type="text" class="form-control" id="new-rule"
+                           placeholder="Enter regex pattern for SQLi detection" required>
+                    <div class="form-text">Example: (\bunion\b.*\bselect\b)</div>
+                </div>
+                <button type="submit" class="btn btn-success mt-2">
+                    <i class="bi bi-plus-circle me-1"></i> Add Rule
+                </button>
+            </form>
+
+            <h5 class="mt-4">Existing Custom Rules</h5>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Rule Pattern</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="custom-rules-list">
+                        <!-- Rules will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Загрузка статистики
+function loadRulesSummary() {
+    fetch('/api/sqli/rules')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('rules-summary').innerHTML = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total Rules</h5>
+                                <p class="card-text display-6">${data.total_rules}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Built-in</h5>
+                                <p class="card-text display-6">${data.builtin.count}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">CRS Rules</h5>
+                                <p class="card-text display-6">${data.crs.count}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Custom</h5>
+                                <p class="card-text display-6">${data.custom.count}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <p><strong>CRS Last Updated:</strong> ${data.crs.last_update}</p>
+                </div>
+            `;
+
+            document.getElementById('crs-last-update').textContent = data.crs.last_update;
+
+            // Обновление списка кастомных правил
+            const rulesList = document.getElementById('custom-rules-list');
+            rulesList.innerHTML = '';
+
+            data.custom.rules.forEach((rule, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><code>${rule}</code></td>
+                    <td>
+                        <button class="btn btn-sm btn-danger delete-rule" data-index="${index}">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </td>
+                `;
+                rulesList.appendChild(row);
+            });
+
+            // Добавление обработчиков для кнопок удаления
+            document.querySelectorAll('.delete-rule').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = this.getAttribute('data-index');
+                    if (confirm('Are you sure you want to delete this rule?')) {
+                        fetch(`/api/sqli/rules/custom/${index}`, {
+                            method: 'DELETE'
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                loadRulesSummary();
+                            }
+                        });
+                    }
+                });
+            });
+        });
+}
+
+// Обновление CRS правил
+document.getElementById('update-crs-btn').addEventListener('click', function() {
+    const resultDiv = document.getElementById('crs-update-result');
+    resultDiv.style.display = 'block';
+    resultDiv.textContent = 'Updating CRS rules...';
+    resultDiv.className = 'alert alert-info';
+
+    fetch('/api/sqli/rules/crs', {
+        method: 'PUT'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.textContent = 'CRS rules updated successfully!';
+            resultDiv.className = 'alert alert-success';
+        } else {
+            resultDiv.textContent = 'Failed to update CRS rules: ' + (data.error || 'Unknown error');
+            resultDiv.className = 'alert alert-danger';
+        }
+        loadRulesSummary();
+    })
+    .catch(error => {
+        resultDiv.textContent = 'Error: ' + error.message;
+        resultDiv.className = 'alert alert-danger';
+    });
+});
+
+// Добавление нового правила
+document.getElementById('add-rule-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const ruleInput = document.getElementById('new-rule');
+    const rule = ruleInput.value.trim();
+
+    if (rule) {
+        fetch('/api/sqli/rules/custom', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ rule: rule })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                ruleInput.value = '';
+                loadRulesSummary();
+
+                // Показать уведомление
+                const resultDiv = document.getElementById('crs-update-result');
+                resultDiv.style.display = 'block';
+                resultDiv.textContent = 'Custom rule added successfully!';
+                resultDiv.className = 'alert alert-success';
+
+                // Автоматически скрыть через 3 секунды
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 3000);
+            }
+        });
+    }
+});
+
+// Загрузка при открытии страницы
+document.addEventListener('DOMContentLoaded', loadRulesSummary);
+</script>
+{% endblock %}

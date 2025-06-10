@@ -1,0 +1,40 @@
+#Основные SQL команды
+\b(?:union|select|insert|update|delete|drop|alter|create|truncate)\b
+
+#Логические операторы
+\b(?:and|or)\s+[\w]+\s*[=<>]+\s*[\w]+
+
+#Time-based атаки
+\bwaitfor\s+delay\b
+\bpg_sleep\b
+
+#Функции БД
+\bversion\s*\(\s*\)
+\bconcat\s*\(
+\bgroup_concat\s*\(
+\bif\s*\(
+\bcase\s+when\b
+
+#Опасные операции
+\bexec\s*\(
+\bxp_cmdshell\b
+\bload_file\s*\(
+\binto\s+(?:out|dump)file\b
+
+#Комбинации команд
+\bselect\b.*?\bfrom\b
+\binsert\b.*?\binto\b
+\bupdate\b.*?\bset\b
+\bdelete\b.*?\bfrom\b
+\bdrop\b.*?\btable\b
+\bunion\b.*?\bselect\b
+
+#Всегда истинные условия
+\bor\b\s*\d+\s*=\s*\d+
+
+#Комментарии SQL
+';?\s*--\s*$
+';?\s*/\*.*?\*/
+
+#Инъекции в строки
+'[\s\w]*['"]

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WAF Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>WAF Management Dashboard</h1>
+
+    <h2>Modules</h2>
+    <table>
+        {% for module, active in modules.items() %}
+        <tr>
+            <td>{{ module }}</td>
+            <td>
+                <form class="module-toggle" data-module="{{ module }}">
+                    <input type="hidden" name="module" value="{{ module }}">
+                    <button type="submit" class="btn {{ 'btn-off' if not active else 'btn-on' }}">
+                        {{ 'Disable' if active else 'Enable' }}
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Update Signatures</h2>
+    <form id="update-signatures">
+        <button type="submit">Update from OWASP CRS</button>
+    </form>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    // Включение/выключение модулей
+    $(".module-toggle").on("submit", function(e) {
+        e.preventDefault();
+        const module = $(this).data("module");
+        const action = $(this).find("button").hasClass("btn-on") ? "disable" : "enable";
+
+        $.post("/toggle_module", { module: module, action: action }, function(data) {
+            location.reload();
+        });
+    });
+
+    // Обновление сигнатур
+    $("#update-signatures").on("submit", function(e) {
+        e.preventDefault();
+        $.post("/update_signatures", function(data) {
+            alert(data.message);
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Log Decryption</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-warning">
+            Decryption Access
+        </div>
+        <div class="card-body">
+            <form id="decrypt-form">
+                <div class="form-group">
+                    <label for="decryption-password" class="form-label">Decryption Password</label>
+                    <input type="password" class="form-control" id="decryption-password" required>
+                    <div class="form-text">Enter master password to decrypt logs</div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-2">Decrypt Logs</button>
+            </form>
+            <div id="decryption-result" class="mt-3 alert" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="card" id="decrypted-logs-section" style="display: none;">
+        <div class="card-header bg-success text-white">
+            Decrypted Logs
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>IP Address</th>
+                            <th>Method</th>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="decrypted-logs-list">
+                        <!-- Логи будут загружены сюда -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('decrypt-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const password = document.getElementById('decryption-password').value;
+    const resultDiv = document.getElementById('decryption-result');
+    resultDiv.style.display = 'none';
+
+    // Показать индикатор загрузки
+    const decryptBtn = this.querySelector('button');
+    const originalBtnText = decryptBtn.innerHTML;
+    decryptBtn.disabled = true;
+    decryptBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Decrypting...';
+
+    // Запрос на сервер для расшифровки
+    fetch('/api/logs/decrypt', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: password })
+    })
+    .then(response => {
+        // Проверяем тип ответа
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            return response.text().then(text => {
+                throw new Error(`Invalid response: ${text.substring(0, 100)}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            showError(data.error);
+        } else if (data.success) {
+            showLogs(data.logs);
+        } else {
+            showError('Unknown response from server');
+        }
+    })
+    .catch(error => {
+        showError('Decryption failed: ' + error.message);
+    })
+    .finally(() => {
+        decryptBtn.disabled = false;
+        decryptBtn.innerHTML = originalBtnText;
+    });
+
+    function showError(message) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'alert alert-danger';
+        resultDiv.textContent = message;
+    }
+
+    function showLogs(logs) {
+        const logsList = document.getElementById('decrypted-logs-list');
+        logsList.innerHTML = '';
+
+        if (!logs || logs.length === 0) {
+            logsList.innerHTML = '<tr><td colspan="5" class="text-center">No logs found</td></tr>';
+            return;
+        }
+
+        logs.forEach(log => {
+            try {
+                const parts = log.split(' | ');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${parts[0] || 'N/A'}</td>
+                    <td>${parts[2]?.split(': ')[1] || 'N/A'}</td>
+                    <td>${parts[3]?.split(': ')[1] || 'N/A'}</td>
+                    <td>${parts[4]?.split(': ')[1] || 'N/A'}</td>
+                    <td><code>${(parts[5]?.split(': ')[1] || '').substring(0, 50)}</code></td>
+                `;
+                logsList.appendChild(row);
+            } catch (e) {
+                console.error('Error parsing log:', log, e);
+            }
+        });
+
+        document.getElementById('decrypted-logs-section').style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

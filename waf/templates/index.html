@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">WAF Dashboard</h2>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">SQLi Protection</h5>
+                    <p class="card-text display-6" id="sqli-status">Loading...</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">IP Blocking</h5>
+                    <p class="card-text display-6" id="ipblock-status">Loading...</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Active Rules</h5>
+                    <p class="card-text display-6" id="rules-count">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            Recent Security Events
+        </div>
+        <div class="card-body">
+            <div id="recent-events">
+                <p>Loading events...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Загрузка статуса модулей
+function loadModulesStatus() {
+    fetch('/api/modules/status')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('sqli-status').textContent = 
+                data.sqli ? 'Active' : 'Inactive';
+            document.getElementById('ipblock-status').textContent = 
+                data.ip_blocking ? 'Active' : 'Inactive';
+        });
+}
+
+// Загрузка количества правил
+function loadRulesCount() {
+    fetch('/api/sqli/rules')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('rules-count').textContent = data.total_rules;
+        });
+}
+
+// Загрузка последних событий
+function loadRecentEvents() {
+    fetch('/api/logs?limit=5')
+        .then(r => r.json())
+        .then(logs => {
+            const container = document.getElementById('recent-events');
+            if (logs.length === 0) {
+                container.innerHTML = '<p>No security events found</p>';
+                return;
+            }
+            
+            let html = '<ul class="list-group">';
+            logs.forEach(log => {
+                html += `
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <span>${log.split(' | ')[0]}</span>
+                            <span class="badge bg-danger">SQLi</span>
+                        </div>
+                        <div class="mt-2">${log.split(' | ')[2]}</div>
+                        <code>${log.split(' | ')[5].split(': ')[1]}</code>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        });
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    loadModulesStatus();
+    loadRulesCount();
+    loadRecentEvents();
+    
+    // Автообновление каждые 30 секунд
+    setInterval(() => {
+        loadModulesStatus();
+        loadRulesCount();
+        loadRecentEvents();
+    }, 30000);
+});
+</script>
+{% endblock %}

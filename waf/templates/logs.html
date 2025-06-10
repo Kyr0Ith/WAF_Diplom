@@ -1,0 +1,111 @@
+<!-- templates/logs.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Security Logs</h2>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <span>Attack Logs</span>
+                <button class="btn btn-sm btn-light" id="refresh-logs">
+                    <i class="bi bi-arrow-repeat"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>IP Address</th>
+                            <th>Method</th>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-list">
+                            {% for log in logs %}
+                            <tr>
+                            <td>{{ log.split(' | ')[0] if log.split(' | ')|length > 0 else 'N/A' }}</td>
+                            <td>
+                                {% set ip_part = log.split(' | ')[2] if log.split(' | ')|length > 2 else '' %}
+                                {{ ip_part.split(': ')[1] if ip_part and ': ' in ip_part else ip_part }}
+                            </td>
+                            <td>
+                                {% set method_part = log.split(' | ')[3] if log.split(' | ')|length > 3 else '' %}
+                                {{ method_part.split(': ')[1] if method_part and ': ' in method_part else method_part }}
+                            </td>
+                            <td>
+                                {% set param_part = log.split(' | ')[4] if log.split(' | ')|length > 4 else '' %}
+                                {{ param_part.split(': ')[1] if param_part and ': ' in param_part else param_part }}
+                            </td>
+                            <td>
+                                {% set value_part = log.split(' | ')[5] if log.split(' | ')|length > 5 else '' %}
+                                <code>
+                                    {{ (value_part.split(': ')[1] if value_part and ': ' in value_part else value_part)|truncate(50) }}
+                                </code>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center">No logs found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Функция для обновления логов
+function refreshLogs() {
+    fetch('/api/logs')
+        .then(r => r.json())
+        .then(logs => {
+            const logsList = document.getElementById('logs-list');
+            logsList.innerHTML = '';
+
+            if (logs.length === 0) {
+                logsList.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center">No logs found</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            logs.forEach(log => {
+                const parts = log.split(' | ');
+                const timestamp = parts[0];
+                const ip = parts[2].split(': ')[1];
+                const method = parts[3].split(': ')[1];
+                const param = parts[4].split(': ')[1];
+                const value = parts[5].split(': ')[1];
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${timestamp}</td>
+                    <td>${ip}</td>
+                    <td>${method}</td>
+                    <td>${param}</td>
+                    <td><code>${value.length > 50 ? value.substring(0, 50) + '...' : value}</code></td>
+                `;
+                logsList.appendChild(row);
+            });
+        });
+}
+
+// Обновление логов при нажатии кнопки
+document.getElementById('refresh-logs').addEventListener('click', refreshLogs);
+
+// Автоматическое обновление каждые 30 секунд
+setInterval(refreshLogs, 30000);
+</script>
+{% endblock %}

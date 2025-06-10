@@ -1,0 +1,8 @@
+{
+  "modules": {
+    "ip_blocker": true,
+    "sqli_detector": true,
+    "log_encryptor": true,
+    "signature_updater": false
+  }
+}

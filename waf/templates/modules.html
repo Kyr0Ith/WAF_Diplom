@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Modules Management</h2>
+    
+    <div class="card">
+        <div class="card-header">
+            Security Modules
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Module</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>SQL Injection Protection</td>
+                        <td>
+                            <span id="sqli-status" class="badge bg-success">Active</span>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input toggle-module" type="checkbox" data-module="sqli" checked>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>IP Blocking</td>
+                        <td>
+                            <span id="ipblock-status" class="badge bg-success">Active</span>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input toggle-module" type="checkbox" data-module="ip_blocking" checked>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Загрузка статуса модулей
+function loadModulesStatus() {
+    fetch('/api/modules/status')
+        .then(r => r.json())
+        .then(data => {
+            // Обновляем статус SQLi
+            const sqliStatus = document.getElementById('sqli-status');
+            const sqliSwitch = document.querySelector('input[data-module="sqli"]');
+            if (data.sqli) {
+                sqliStatus.textContent = 'Active';
+                sqliStatus.className = 'badge bg-success';
+                sqliSwitch.checked = true;
+            } else {
+                sqliStatus.textContent = 'Inactive';
+                sqliStatus.className = 'badge bg-danger';
+                sqliSwitch.checked = false;
+            }
+            
+            // Обновляем статус IP Blocking
+            const ipblockStatus = document.getElementById('ipblock-status');
+            const ipblockSwitch = document.querySelector('input[data-module="ip_blocking"]');
+            if (data.ip_blocking) {
+                ipblockStatus.textContent = 'Active';
+                ipblockStatus.className = 'badge bg-success';
+                ipblockSwitch.checked = true;
+            } else {
+                ipblockStatus.textContent = 'Inactive';
+                ipblockStatus.className = 'badge bg-danger';
+                ipblockSwitch.checked = false;
+            }
+        });
+}
+
+// Переключение модулей
+document.querySelectorAll('.toggle-module').forEach(switchElement => {
+    switchElement.addEventListener('change', function() {
+        const module = this.getAttribute('data-module');
+        const state = this.checked;
+        
+        fetch('/api/modules/toggle', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                module: module,
+                state: state
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadModulesStatus();
+            }
+        });
+    });
+});
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', loadModulesStatus);
+</script>
+{% endblock %}
