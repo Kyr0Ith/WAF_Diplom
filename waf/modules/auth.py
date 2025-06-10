@@ -1,8 +1,8 @@
 from functools import wraps
 from flask import request, session, redirect
-
+#WIP or not?
 USERNAME = 'admin'
-PASSWORD = 'waf_admin'  # Заменить в production!
+PASSWORD = 'waf_admin'  #REPLACE
 
 def login_required(f):
     @wraps(f)

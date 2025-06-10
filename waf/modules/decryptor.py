@@ -1,4 +1,4 @@
-# modules/decryptor.py
+#modules/decryptor.py
 from cryptography.fernet import Fernet
 from datetime import datetime
 import os
@@ -10,7 +10,6 @@ class LogDecryptor:
         self.key_dir = key_dir
 
     def find_keys(self):
-        """Найти все ключи в директории"""
         key_files = glob.glob(os.path.join(self.key_dir, "secret.key*"))
         keys = {}
 
@@ -25,12 +24,10 @@ class LogDecryptor:
         return keys
 
     def decrypt_logs(self, log_file, password=None):
-        """Расшифровать логи с возможной аутентификацией"""
         keys = self.find_keys()
         decrypted_logs = []
 
-        # Простая проверка пароля
-        if password and password != "admin123":  #REPLACE WITH HASH WHEN PROD
+        if password and password != "admin123":  #REPLACE WITH HASH
             return []
 
         with open(log_file, "rb") as f:
@@ -39,7 +36,6 @@ class LogDecryptor:
                 if not line:
                     continue
 
-                # Пробуем все ключи для расшифровки
                 for key_name, key in keys.items():
                     try:
                         cipher = Fernet(key)
@@ -48,7 +44,7 @@ class LogDecryptor:
                             "key": key_name,
                             "log": decrypted
                         })
-                        break  # Успешно расшифровано
+                        break
                     except:
                         continue
 

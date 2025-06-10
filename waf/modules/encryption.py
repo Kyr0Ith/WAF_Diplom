@@ -13,7 +13,7 @@ class EncryptionManager:
         self.current_key = self._load_or_generate_key()
 
     def _load_or_generate_key(self) -> bytes:
-        """Генерация/загрузка ключа шифрования"""
+        """Генерация/загрузка ключа"""
         if os.path.exists(self.KEY_FILE):
             with open(self.KEY_FILE, "rb") as f:
                 return f.read()
@@ -28,13 +28,12 @@ class EncryptionManager:
         """Ротация ключа"""
         new_key = Fernet.generate_key()
 
-        # Сохраняем старый ключ
+        #Сохраняем старый ключ
         backup_file = f"{self.KEY_FILE}.{self.last_rotation.strftime('%Y%m%d')}"
         with open(backup_file, "wb") as f:
             f.write(self.current_key)
             os.chmod(backup_file, 0o400)
 
-        # Сохраняем новый ключ
         with open(self.KEY_FILE, "wb") as f:
             f.write(new_key)
 

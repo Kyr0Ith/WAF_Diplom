@@ -1,4 +1,4 @@
-# app.py - Основное приложение
+#app.py - Основное приложение
 import glob
 
 from cryptography.fernet import InvalidToken, Fernet
@@ -15,14 +15,12 @@ import re
 
 app = Flask(__name__)
 
-# Инициализация модулей
 encryption_manager = EncryptionManager()
 audit_logger = AuditLogger(encryption_manager)
 ip_blocker = IPBlocker()
 sqli_detector = SQLiDetector()
 proxy_handler = ProxyHandler(ip_blocker, sqli_detector, audit_logger)
 
-# Загрузка начальных CRS правил
 def load_crs_background():
     if not sqli_detector.crs_rules_loaded():
         sqli_detector.update_crs_rules()
@@ -30,9 +28,7 @@ def load_crs_background():
 threading.Thread(target=load_crs_background, daemon=True).start()
 
 
-# ------------------------------
-# Веб-интерфейс
-# ------------------------------
+#Веб-интерфейс
 
 @app.route('/')
 def index():
@@ -59,8 +55,8 @@ def ip_blocklist():
 def logs():
     try:
         log_entries = audit_logger.get_logs(decrypt=True)
-        # Ограничиваем количество логов для производительности
-        return render_template('logs.html', logs=log_entries[-100:])  # Показываем только последние 100 записей
+        #max logs
+        return render_template('logs.html', logs=log_entries[-100:])
     except Exception as e:
         app.logger.error(f"Error loading logs: {str(e)}")
         return render_template('logs.html', logs=[])
@@ -73,11 +69,7 @@ def settings():
 
 
 
-# ------------------------------
-# API Endpoints
-# ------------------------------
-
-
+#API Endpoints
 
 
 # Управление модулями
@@ -104,7 +96,7 @@ def toggle_module():
 
     return jsonify({'success': True})
 
-#test only, not used in ap
+#test only, not used rn
 app.secret_key = 'your_secret_key_here'  #Replace for prod
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -124,7 +116,6 @@ def logout():
     session.pop('authenticated', None)
     return redirect('/login')
 
-# Управление правилами SQLi
 @app.route('/api/sqli/rules', methods=['GET'])
 def get_sqli_rules():
     return jsonify(sqli_detector.get_rules_report())
@@ -153,7 +144,7 @@ def update_crs_rules():
     return jsonify({'error': 'Failed to update CRS rules'}), 500
 
 
-# Управление блокировкой IP
+
 @app.route('/api/ip_blocklist', methods=['GET'])
 def get_blocked_ips():
     return jsonify(ip_blocker.get_blocked_ips())
@@ -165,13 +156,13 @@ def unblock_ip(ip):
     return jsonify({'success': True})
 
 
-# Логи
+
 @app.route('/api/logs', methods=['GET'])
 def get_logs_api():
     logs = audit_logger.get_logs(decrypt=True)
     return jsonify(logs)
 
-
+#PASSWORD FOR DECRYPT!!!!!
 MASTER_PASSWORD = os.environ.get("DECRYPTION_PASSWORD", "default_password")
 
 @app.route('/decrypt_logs')
@@ -181,7 +172,6 @@ def decrypt_logs():
 
 @app.route('/api/logs/decrypt', methods=['POST'])
 def decrypt_logs_api():
-    # Убедимся, что запрос содержит JSON
     if not request.is_json:
         return jsonify({'error': 'Request must be JSON'}), 400
 
@@ -189,14 +179,12 @@ def decrypt_logs_api():
         data = request.get_json()
         password = data.get('password')
 
-        # Проверка пароля
         if not password:
             return jsonify({'error': 'Missing password'}), 400
 
         if password != MASTER_PASSWORD:
             return jsonify({'error': 'Invalid decryption password'}), 401
 
-        # Находим все ключи
         key_files = glob.glob("secret.key*")
         keys = []
         for key_file in key_files:
@@ -207,7 +195,6 @@ def decrypt_logs_api():
                 print(f"Error reading key file {key_file}: {str(e)}")
                 continue
 
-        # Расшифровка логов
         decrypted_logs = []
         log_file_path = "audit.log"
 
@@ -221,7 +208,6 @@ def decrypt_logs_api():
                     if not line:
                         continue
 
-                    # Пробуем все ключи
                     decrypted = None
                     for key in keys:
                         try:
@@ -250,7 +236,6 @@ def decrypt_logs_api():
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 
-# Настройки: ротация ключей
 @app.route('/api/settings/rotate_key', methods=['POST'])
 def rotate_key():
     if encryption_manager.rotate_key():
@@ -258,13 +243,10 @@ def rotate_key():
     return jsonify({'success': False, 'message': 'Key rotation not due yet'})
 
 
-# Настройки: получение конфигурации шифрования
 @app.route('/api/settings/encryption', methods=['GET'])
 def get_encryption_settings():
     return jsonify(encryption_manager.get_config())
 
-
-# Настройки: изменение интервала ротации
 @app.route('/api/settings/rotation_interval', methods=['POST'])
 def set_rotation_interval():
     data = request.get_json()
@@ -279,9 +261,9 @@ def set_rotation_interval():
         return jsonify({'error': str(e)}), 500
 
 
-# ------------------------------
-# Прокси-обработчик
-# ------------------------------
+
+#Прокси-обработчик
+
 
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'])
 def proxy(path):

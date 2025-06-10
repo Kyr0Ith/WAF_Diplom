@@ -12,7 +12,6 @@ class AuditLogger:
         """Логирование события атаки"""
         try:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            # Ограничиваем длину значения и экранируем разделители
             safe_value = (value[:500] + '...') if len(value) > 500 else value
             safe_value = safe_value.replace('|', '_').replace('\n', ' ').replace('\r', ' ')
 
